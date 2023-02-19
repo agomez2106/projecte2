@@ -1,0 +1,61 @@
+FROM orboan/dind
+
+# Instalacion de los programas
+RUN apt-get update && apt-get install -y \
+	supervisor \
+	openssh-server \
+	nodejs \
+	npm \
+	docker.io \
+	docker-compose \
+	mysql-client \
+	git \
+	maven \
+	gradle
+
+# Instalamos los paquetes basicos
+RUN apt-get update && apt-get install -y \
+	zip unzip curl && \
+	rm -rf /var/lib/apt/lists/* && \
+	rm -rf /tmp/*
+
+# Cambiamos a non-root user para instalar SDKMAN
+USER $USER_UID:$USER_GID
+# Descargamos SDKMAN
+RUN curl -s "https://get.sdkman.io" | bash
+
+# Instalamos Java and Maven, y borramos archivos que no sean necessarios de SD>
+RUN bash -c "source $HOME/.sdkman/bin/sdkman-init.sh && \
+	yes | sdk install java $JAVA_VERSION && \
+	yes | sdk install maven $MAVEN_VERSION && \
+	rm -rf $HOME/.sdkman/archives/* && \
+	rm -rf $HOME/.sdkman/tmp/*"
+
+# Configuración de SSH
+RUN echo 'root:root' | chpasswd
+RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh>
+
+# Login de SSH fijado.
+RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.>
+
+ENV NOTVISIBLE "in users profile"
+RUN echo "export VISIBLE=now" >> /etc/profile
+# Puerto VSCode
+EXPOSE 8081
+
+# Puerto SSH
+EXPOSE 2222
+
+# Puertos
+EXPOSE 9001:9001
+EXPOSE 8088:80
+EXPOSE 3306:3306
+EXPOSE 8091:80
+EXPOSE 8011:8080
+EXPOSE 50000:50000
+
+#Copiamos la configuracion de supervisord
+COPY supervisord.conf /etc/supervisor/conf.d
+
+
+CMD ["/usr/sbin/sshd", "-D"]
